@@ -1,0 +1,148 @@
+#include <IRremote.h>
+
+int RECV_PIN = 4;
+int AIN1 = 7;
+int AIN2 = 8;
+int BIN1 = 12;
+int BIN2 = 11;
+int value1;
+int value2;
+bool findLight = false;
+
+
+IRrecv irrecv(RECV_PIN);
+decode_results results;
+
+void setup()
+{
+  Serial.begin(19200);
+  irrecv.enableIRIn(); // Start the receiver
+  pinMode (AIN1, OUTPUT);
+  pinMode (AIN2, OUTPUT);
+  pinMode (BIN1, OUTPUT);
+  pinMode (BIN2, OUTPUT);
+  pinMode(A0, INPUT);
+  pinMode(A1, INPUT);
+}
+
+void forward() {
+  digitalWrite(AIN1, HIGH);
+  digitalWrite(BIN1, LOW);
+  digitalWrite(AIN2, LOW);
+  digitalWrite(BIN2, HIGH);
+}
+
+void backward() {
+  digitalWrite(AIN1, LOW);
+  digitalWrite(BIN1, HIGH);
+  digitalWrite(AIN2, HIGH);
+  digitalWrite(BIN2, LOW);
+}
+
+void right() {
+  digitalWrite(AIN1, HIGH);
+  digitalWrite(BIN1, HIGH);
+  digitalWrite(AIN2, LOW);
+  digitalWrite(BIN2, LOW);
+}
+
+void left() {
+  digitalWrite(AIN1, LOW);
+  digitalWrite(BIN1, LOW);
+  digitalWrite(AIN2, HIGH);
+  digitalWrite(BIN2, HIGH);
+}
+
+void stop() {
+  digitalWrite(AIN1, LOW);
+  digitalWrite(AIN2, LOW);
+  digitalWrite(BIN1, LOW);
+  digitalWrite(BIN2, LOW);
+}
+
+void loop()
+{
+  if (irrecv.decode(&results)) {
+    if (results.value == 0x32A6D02F) {
+      Serial.println("Button Up");
+      forward();
+      delay(500);
+      stop();
+    }
+    else if (results.value == 0x32A6708F) {
+      Serial.println("Button Down");
+      backward();
+      delay(500);
+      stop();
+    }
+    else if (results.value == 0x32A68877) {
+      Serial.println("Button Right");
+      right();
+      delay(500);
+      stop();
+    }
+    else if (results.value == 0x32A608F7) {
+      Serial.println("Button Left");
+      left();
+      delay(500);
+      stop();
+    }
+    else if (results.value == 0x32A6B04F) {
+      Serial.println("Button Stop");
+      findLight = false;
+      stop();
+    }
+    else if (results.value == 0x32A66897) {
+      findLight = true;
+
+    }
+
+    //      int value1right;
+    //      right ();
+    //      delay(20);
+    //      stop();
+    //      value1right = analogRead(A0);
+    //      if (value1 > value1right) {
+    //        left();
+    //        delay(10);
+    //      }
+    //      else if (value1 < value1left) {
+    //
+    //      }
+
+
+    else {
+      Serial.print("Unrecognized: ");
+      Serial.print(results.value, HEX);
+      Serial.println();
+    }
+    irrecv.resume(); // Receive the next value
+  }
+
+  if (findLight == true) {
+    int value1;
+    int value2;
+    Serial.println ("Finding Light");
+
+    left();
+    delay(50);
+    stop();
+    delay(50);
+    value1 = analogRead(A0);
+    Serial.println (value1);
+
+
+    right();
+    delay(100);
+    stop();
+    delay(50);
+    value2 = analogRead(A0);
+    Serial.println (value2);
+    if (value1 > value2) {
+      left();
+      delay(100);
+      stop();
+      delay(50);
+    }
+  }
+}
