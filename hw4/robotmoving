@@ -1,0 +1,71 @@
+#include <IRremote.h>
+
+int RECV_PIN = 4;
+int AIN1 = 7;
+int AIN2 = 8;
+int BIN1 = 12;
+int BIN2 = 11; 
+
+IRrecv irrecv(RECV_PIN);
+decode_results results;
+
+void setup()
+{
+  Serial.begin(19200);
+  irrecv.enableIRIn(); // Start the receiver
+  pinMode (AIN1, OUTPUT);
+  pinMode (AIN2, OUTPUT);
+  pinMode (BIN1, OUTPUT);
+  pinMode (BIN2, OUTPUT); 
+}
+
+void loop()
+{
+  if (irrecv.decode(&results)) {
+    if (results.value == 0x32A6D02F) {
+      Serial.println("Button Up");
+      digitalWrite(AIN1, HIGH);
+      digitalWrite(BIN1, LOW);
+      digitalWrite(AIN2, LOW);
+      digitalWrite(BIN2, HIGH);
+      delay(500);
+    }
+    else if (results.value == 0x32A6708F) {
+      Serial.println("Button Down");
+      digitalWrite(AIN1, LOW);
+      digitalWrite(BIN1, HIGH);
+      digitalWrite(AIN2, HIGH);
+      digitalWrite(BIN2, LOW);
+      delay(500); 
+    }
+    else if (results.value == 0x32A68877) {
+      Serial.println("Button Right");
+      digitalWrite(AIN1, HIGH);
+      digitalWrite(BIN1, HIGH);
+      digitalWrite(AIN2, LOW);
+      digitalWrite(BIN2, LOW);
+      delay(500);
+    }
+    else if (results.value == 0x32A608F7) {
+      Serial.println("Button Left");
+      digitalWrite(AIN1, LOW);
+      digitalWrite(BIN1, LOW);
+      digitalWrite(AIN2, HIGH);
+      digitalWrite(BIN2, HIGH);
+      delay(500);
+    }
+    else if (results.value == 0x32A6B04F){
+      Serial.println("Button Stop"); 
+      digitalWrite(AIN1, LOW);
+      digitalWrite(AIN2, LOW);
+      digitalWrite(BIN1, LOW);
+      digitalWrite(BIN2, LOW);
+    }
+    else {
+      Serial.print("Unrecognized: ");
+      Serial.print(results.value, HEX);
+      Serial.println();
+    }
+    irrecv.resume(); // Receive the next value
+  }
+}
