@@ -1,0 +1,17 @@
+#include <Servo.h>
+// I found the amount of time for the servo to move by reducing the amount of delay time I gave until I found the time range that it took to fully turn. 
+
+int servoPin = 5;
+Servo servo;
+
+void setup() {
+  servo.attach(servoPin);
+}
+void loop() {
+  servo.write(0);
+  delay(170); //320 for 180 degrees and 160-170 for 90 degrees 
+  
+
+  servo.write(180);
+  delay(1000);
+}
