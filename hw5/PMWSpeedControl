@@ -1,0 +1,193 @@
+#include <IRremote.h>
+
+int RECV_PIN = 4;
+int AIN1 = 7;
+int AIN2 = 8;
+int BIN1 = 12;
+int BIN2 = 11;
+int value1;
+int value2;
+bool findLight = false;
+bool wander = false; 
+int motorPWM = 9;
+int triggerPin = 2;
+int echoPin = 3;
+
+int speed = 0;
+
+IRrecv irrecv(RECV_PIN);
+decode_results results;
+
+void setup()
+{
+  Serial.begin(19200);
+  irrecv.enableIRIn(); // Start the receiver
+  pinMode (AIN1, OUTPUT);
+  pinMode (AIN2, OUTPUT);
+  pinMode (BIN1, OUTPUT);
+  pinMode (BIN2, OUTPUT);
+  pinMode(A0, INPUT);
+  pinMode(A1, INPUT);
+  pinMode(triggerPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  digitalWrite(triggerPin, LOW);
+  
+}
+
+void forward(int howFast) {
+  digitalWrite(AIN1, HIGH);
+  digitalWrite(BIN1, LOW);
+  digitalWrite(AIN2, LOW);
+  digitalWrite(BIN2, HIGH);
+  analogWrite(motorPWM, howFast);
+}
+
+void backward(int howFast) {
+  digitalWrite(AIN1, LOW);
+  digitalWrite(BIN1, HIGH);
+  digitalWrite(AIN2, HIGH);
+  digitalWrite(BIN2, LOW);
+  analogWrite(motorPWM, howFast);
+}
+
+void right(int howFast) {
+  digitalWrite(AIN1, HIGH);
+  digitalWrite(BIN1, HIGH);
+  digitalWrite(AIN2, LOW);
+  digitalWrite(BIN2, LOW);
+  analogWrite(motorPWM, howFast);
+}
+
+void left(int howFast) {
+  digitalWrite(AIN1, LOW);
+  digitalWrite(BIN1, LOW);
+  digitalWrite(AIN2, HIGH);
+  digitalWrite(BIN2, HIGH);
+  analogWrite(motorPWM, howFast);
+}
+
+void stop() {
+  digitalWrite(AIN1, LOW);
+  digitalWrite(AIN2, LOW);
+  digitalWrite(BIN1, LOW);
+  digitalWrite(BIN2, LOW);
+}
+
+float ping() {
+  unsigned long maxTime = 20000;
+  unsigned long us;
+  float inches;
+  // Hold triggerPin high for at least 10us
+  digitalWrite(triggerPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(triggerPin, LOW);
+  // Measure length of high pulse on echoPin
+  us = pulseIn(echoPin, HIGH, maxTime);
+  // pulseIn returns 0 on timeout. Assume worst case.
+  if (us == 0) {
+    us = maxTime;
+  }
+  // Convert roundtrip microseconds to inches
+  inches = us * 0.013504 / 2;
+  return inches;
+}
+void loop() {
+  if (irrecv.decode(&results)) {
+    if (results.value == 0x32A6A857) { //volume up button
+      speed = speed + 20;
+      Serial.print("Speed Increase ");
+      Serial.println(speed);
+    }
+    else if (results.value == 0x32A638C7) { //volume donw button
+      speed = speed - 20;
+      Serial.print("Speed Decrease ");
+      Serial.println(speed);
+    }
+    if (results.value == 0x32A6D02F) {
+      Serial.println("Button Up");
+      forward(speed);
+      delay(500);
+      stop();
+    }
+    else if (results.value == 0x32A6708F) {
+      Serial.println("Button Down");
+      backward(speed);
+      delay(500);
+      stop();
+    }
+    else if (results.value == 0x32A68877) {
+      Serial.println("Button Right");
+      right(speed);
+      delay(100);
+      stop();
+    }
+    else if (results.value == 0x32A608F7) {
+      Serial.println("Button Left");
+      left(speed);
+      delay(100);
+      stop();
+    }
+    else if (results.value == 0x32A6B04F) {
+      Serial.println("Button Stop");
+      findLight = false;
+      wander = false; 
+      stop();
+    }
+    else if (results.value == 0x32A66897) {
+      Serial.println("Button Find Light"); //home button
+      findLight = true;
+    }
+    else if (results.value == 0x32A6A659) {
+      Serial.println("Button Wander"); //Netflix button
+      wander == true; 
+    }
+
+    else {
+      Serial.print("Unrecognized: ");
+      Serial.print(results.value, HEX);
+      Serial.println();
+    }
+    irrecv.resume(); // Receive the next value
+  }
+  if (wander == true) {
+//    forward(speed);
+//    if (inches <3.5) {
+//      left(speed-40); 
+//      delay(20);
+//    }
+
+    
+  }
+
+  if (findLight == true) {
+    int value1;
+    int value2;
+    Serial.println ("Finding Light");
+
+    left(speed);
+    delay(50);
+    stop();
+    delay(50);
+    value1 = analogRead(A0);
+    Serial.println (value1);
+
+
+    right(speed);
+    delay(100);
+    stop();
+    delay(50);
+    value2 = analogRead(A0);
+    Serial.println (value2);
+    if (value1 > value2) {
+      left(speed);
+      delay(100);
+      stop();
+      delay(50);
+      // if (value1(plus or minus 5) = value2(plus or minus 5)) { stop(); }
+    }
+  }
+   float inches = ping();
+  Serial.println(inches);
+  delay(60);
+}
+
