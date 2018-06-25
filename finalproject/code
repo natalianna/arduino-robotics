@@ -1,0 +1,382 @@
+/****************************************
+DRAWING / DANCING ROBOT
+****************************************/
+#include <CapacitiveSensor.h>
+#include <IRremote.h>
+#include <Servo.h>
+#include <Wire.h>
+#include "Adafruit_TCS34725.h"
+
+
+
+const int sampleWindow = 50; // Sample window width in mS (50 mS = 20Hz)
+unsigned int sample;
+
+int RECV_PIN = 11;
+int AIN1 = 8;
+int AIN2 = 7;
+int BIN1 = 9;
+int BIN2 = 10;
+bool readAudio = false;
+int motorPWM = 6;
+int speed = 100;
+unsigned int range = 0;
+uint16_t r, g, b, c, colorTemp, lux;
+int usedrange = 0; 
+
+IRrecv irrecv(RECV_PIN);
+decode_results results;
+
+Servo servoa, servob, servoc, servod;
+
+Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_700MS, TCS34725_GAIN_1X);
+
+
+void setup()
+{
+  irrecv.enableIRIn(); // Start the receiver
+  Serial.begin(9600);
+  servoa.attach(5);  //the pin for the servoa control
+  servob.attach(2);  //the pin for the servob control
+  servoc.attach(3);  //the pin for the servoc control
+  servod.attach(4);  //the pin for the servod control
+  reset();
+  pinMode (AIN1, OUTPUT);
+  pinMode (AIN2, OUTPUT);
+  pinMode (BIN1, OUTPUT);
+  pinMode (BIN2, OUTPUT);
+
+  if (tcs.begin()) {
+    Serial.println("Found sensor");
+  } else {
+    Serial.println("No TCS34725 found ... check your connections");
+    while (1);
+  }
+}
+
+void forward(int howFast) {
+  digitalWrite(AIN1, HIGH);
+  digitalWrite(BIN1, HIGH);
+  digitalWrite(AIN2, LOW);
+  digitalWrite(BIN2, LOW);
+  analogWrite(motorPWM, howFast);
+}
+
+void backward(int howFast) {
+  digitalWrite(AIN1, LOW);
+  digitalWrite(BIN1, LOW);
+  digitalWrite(AIN2, HIGH);
+  digitalWrite(BIN2, HIGH);
+  analogWrite(motorPWM, howFast);
+}
+
+void right(int howFast) {
+  digitalWrite(AIN1, LOW);
+  digitalWrite(BIN1, HIGH);
+  digitalWrite(AIN2, HIGH);
+  digitalWrite(BIN2, LOW);
+  analogWrite(motorPWM, howFast);
+}
+
+void left(int howFast) {
+  digitalWrite(AIN1, HIGH);
+  digitalWrite(BIN1, LOW);
+  digitalWrite(AIN2, LOW);
+  digitalWrite(BIN2, HIGH);
+  analogWrite(motorPWM, howFast);
+}
+
+void stop() {
+  digitalWrite(AIN1, LOW);
+  digitalWrite(AIN2, LOW);
+  digitalWrite(BIN1, LOW);
+  digitalWrite(BIN2, LOW);
+  reset();
+}
+
+void drawblue() {
+  servoa.write(80);
+}
+void drawyellow() {
+  servob.write(13);
+}
+
+void drawgreen() {
+  servoc.write (170);
+}
+
+void draworange() {
+  servod.write (10);
+}
+void reset() {
+  servoa.write (0);
+  servob.write (100);
+  servoc.write (80);
+  servod.write (105);
+}
+void readAudiofunction() {
+  //delay(200);
+  int i = 0; 
+  for (i = 0; i < 2; i ++) {
+    unsigned long startMillis = millis(); // Start of sample window
+    // peak-to-peak level
+
+    unsigned int signalMax = 0;
+    unsigned int signalMin = 1024;
+    servoa.detach();  //the pin for the servoa control
+    servob.detach();  //the pin for the servob control
+    servoc.detach();  //the pin for the servoc control
+    servod.detach();  //the pin for the servod control
+    // collect data for 50 mS
+    while (millis() - startMillis < sampleWindow)
+    {
+      sample = analogRead(0);
+      signalMin = min(signalMin, sample);
+      signalMax = max(signalMax, sample);
+    }
+
+    range = signalMax - signalMin;  // max - min = peak-peak amplitude
+    // double volts = (range * 5.0) / 1024;  // convert to volts
+    
+    Serial.println(range);
+    servoa.attach(5);  //the pin for the servoa control
+    servob.attach(2);  //the pin for the servob control
+    servoc.attach(3);  //the pin for the servoc control
+    servod.attach(4);  //the pin for the servod control
+  }
+  if (i= 3) {
+  
+  usedrange = range; 
+  Serial.print("Used range: "); 
+  Serial.println(usedrange); 
+  }
+}
+
+void readColorfunction() {
+
+  tcs.getRawData(&r, &g, &b, &c);
+  colorTemp = tcs.calculateColorTemperature(r, g, b);
+  lux = tcs.calculateLux(r, g, b);
+
+  Serial.print("Color Temp: "); Serial.print(colorTemp, DEC); Serial.print(" K - ");
+  Serial.print("Lux: "); Serial.print(lux, DEC); Serial.print(" - ");
+  Serial.print("R: "); Serial.print(r, DEC); Serial.print(" ");
+  Serial.print("G: "); Serial.print(g, DEC); Serial.print(" ");
+  Serial.print("B: "); Serial.print(b, DEC); Serial.print(" ");
+  Serial.print("C: "); Serial.print(c, DEC); Serial.print(" ");
+  Serial.println(" ");
+  delay(100);
+}
+
+void loop()
+{
+  readAudiofunction(); 
+  if (irrecv.decode(&results)) {
+    if (results.value == 0x32A6A857) { //volume up button
+      speed = speed + 20;
+      speed = constrain(speed, 0, 255);
+      Serial.print("Speed Increase ");
+      Serial.println(speed);
+    }
+    else if (results.value == 0x32A638C7) { //volume down button
+      speed = speed - 20;
+      speed = constrain(speed, 0, 255);
+      Serial.print("Speed Decrease ");
+      Serial.println(speed);
+    }
+    else if (results.value == 0x32A6D02F) {
+      Serial.println("Button Up");
+      forward(speed);
+      delay(500);
+      stop();
+    }
+    else if (results.value == 0x32A6708F) {
+      Serial.println("Button Down");
+      backward(speed);
+      delay(500);
+      stop();
+    }
+    else if (results.value == 0x32A68877) {
+      Serial.println("Button Right");
+      right(speed);
+      delay(300);
+      stop();
+    }
+    else if (results.value == 0x32A608F7) {
+      Serial.println("Button Left");
+      left(speed);
+      delay(300);
+      stop();
+    }
+    else if (results.value == 0x32A6B04F) {
+      Serial.println("Button Stop"); // center button
+      readAudio = false;
+      stop();
+    }
+    else if (results.value == 0x32A6A659) {
+      Serial.println("Button Draw Circle"); //Netflix button
+      drawyellow();
+      draworange();
+      drawgreen();
+      drawblue();
+      right(speed);
+      delay(10000);
+      reset();
+      delay(200);
+      stop();
+    }
+    else if (results.value == 0x32A6EC13) {
+      Serial.println("Button Listen to Music"); //three lines button
+      readAudio = true;
+    }
+    else if (results.value == 0x32A66699) { //go home
+      drawblue();
+      drawgreen();
+      Serial.println("Blue and green");
+    }
+    else if (results.value == 0x32A600FF) { //settings
+      drawyellow();
+      draworange();
+      Serial.println("Yellow and orange"); 
+    }
+
+    else {
+      Serial.print("Unrecognized: ");
+      Serial.print(results.value, HEX);
+      Serial.println();
+    }
+    irrecv.resume(); // Receive the next value
+  }
+  if (readAudio == true) {
+    readColorfunction(); 
+    if (colorTemp < 3000 || colorTemp > 6800 ) {   // if color sensor reads anything but white
+      left(speed); //turn left 
+      delay(300);
+      stop(); 
+    }
+    readAudiofunction();
+    ///////////////////////////////////Ranges////////////////////////////////
+    /*if (range > 950) {
+      range = 0;
+      readAudiofunction();
+    }
+    */
+    if (usedrange >50){
+      usedrange = usedrange+50; 
+    }
+  Serial.println ("Made it");
+    if (usedrange > 100 && usedrange < 200) {
+      drawyellow();
+      draworange();
+      if (usedrange > 100 && usedrange < 150) {
+        left(80);
+        delay(1000);
+        forward(20);
+        delay(100);
+        stop();
+      }
+      else if (usedrange > 151 && usedrange < 200) {
+        right(80);
+        delay(1000);
+        forward(20);
+        delay(100);
+        stop();
+      }
+    }
+    else if (usedrange > 201 && usedrange < 300) {
+      reset();
+      drawblue();
+      drawgreen();
+      if ((range > 200 && usedrange < 210) || (usedrange > 241 && usedrange < 250)) {
+        left(speed);
+        delay(1000);
+        stop();
+      }
+      else if ((usedrange > 211 && range < 220) || (usedrange > 251 && usedrange < 260)) {
+        forward(speed);
+        delay(1000);
+        stop();
+      }
+      else if ((usedrange > 221 && usedrange < 230) || (usedrange > 261 && usedrange < 270)) {
+        right(speed);
+        delay(1000);
+        stop();
+      }
+      else if ((usedrange > 231 && usedrange < 240) || (usedrange > 271 && usedrange < 280)) {
+        backward(speed);
+        delay(1000);
+        stop();
+      }
+      else if (usedrange > 281 && usedrange < 300) {
+        drawyellow();
+        draworange();
+        drawgreen();
+        drawblue();
+        right(speed);
+        delay(1000);
+        reset();
+        delay(200);
+        stop();
+      }
+    }
+
+    else if (usedrange > 301 && usedrange < 400) {
+      reset();
+      draworange();
+      drawyellow();
+      if ((usedrange > 300 && usedrange < 310) || (usedrange > 341 && usedrange < 350)) {
+        left(speed);
+        delay(1000);
+        stop();
+      }
+      else if ((usedrange > 311 && usedrange < 320) || (usedrange > 351 && usedrange < 360)) {
+        forward(speed);
+        delay(1000);
+        stop();
+      }
+      else if ((usedrange > 321 && usedrange < 330) || (usedrange > 361 && usedrange < 370)) {
+        right(speed);
+        delay(1000);
+        stop();
+      }
+      else if ((usedrange > 331 && usedrange < 340) || (usedrange > 371 && usedrange < 380)) {
+        backward(speed);
+        delay(1000);
+        stop();
+      }
+      else if (usedrange > 381 && usedrange < 400) {
+        drawyellow();
+        draworange();
+        drawgreen();
+        drawblue();
+        right(speed);
+        delay(1000);
+        reset();
+        delay(200);
+        stop();
+      }
+    }
+    else if (usedrange > 401 && usedrange < 600) {
+      if (usedrange < 401 && usedrange > 500) {
+        reset();
+        drawyellow();
+        draworange();
+        right(speed);
+        delay(1000);
+        reset();
+        delay(200);
+        stop();
+      }
+      else if (usedrange < 501 && usedrange > 900) {
+        reset();
+        drawgreen();
+        drawblue();
+        left(speed);
+        delay(1000);
+        reset();
+        delay(200);
+        stop();
+      }
+    }
+  }
+}
